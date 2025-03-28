@@ -8,4 +8,4 @@
 A ZX Spectrum live-coding tool inspired by [Bazematic](https://github.com/gasman/bazematic)
 and [Bonzomatic](https://github.com/Gargaj/Bonzomatic).
 
-![screencast](https://github.com/user-attachments/assets/f22639c3-15e6-4791-9ef8-24e6ff381e58)
+![GIF](https://github.com/user-attachments/assets/ef0b0261-f07c-46f0-95f7-eb569904a9da)
