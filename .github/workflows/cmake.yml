@@ -2,11 +2,10 @@ name: Build
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [ "master" ]
-  # pull_request:
-  #   branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
   push:
+    branches: [ "master" ]
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
@@ -26,9 +25,6 @@ jobs:
             compiler: gcc
             type: Release
           - os: macos-latest
-            compiler: default
-            type: Release
-          - os: macos-13
             compiler: default
             type: Release
 
@@ -91,19 +87,22 @@ jobs:
       if: startsWith(matrix.os, 'macos')
       run: cpack -G DragNDrop
 
-    - name: Upload Artifact (ZIP)
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         compression-level: 0
-        retention-days: 7
+        retention-days: 3
         name: bin-${{ matrix.os }}-${{ matrix.type }}
-        path: ${{ github.workspace }}/build/*.zip
+        path: |
+          ${{ github.workspace }}/build/*.zip
+          ${{ github.workspace }}/build/*.dmg
 
-    - name: Upload Artifact (macOS DMG)
-      uses: actions/upload-artifact@v4
-      if: startsWith(matrix.os, 'macos')
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
       with:
-        compression-level: 0
-        retention-days: 7
-        name: dmg-${{ matrix.os }}-${{ matrix.type }}
-        path: ${{ github.workspace }}/build/*.dmg
+        draft: true
+        files: |
+          ${{ github.workspace }}/build/*.zip
+          ${{ github.workspace }}/build/*.dmg
