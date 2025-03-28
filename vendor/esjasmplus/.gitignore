@@ -1,0 +1,9 @@
+*.o
+.deps
+sjasmwin32/sjasmplus.res
+/sjasmplus*
+/*/Makefile*
+/build/
+/CMakeFiles/sjasmplus.dir/
+/.kdev4
+/.cache

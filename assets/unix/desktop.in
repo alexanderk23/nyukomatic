@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=@PROJECT_NAME@
+Version=@FULL_VERSION@
+Icon=@PROJECT_NAME@
+Exec=@PROJECT_NAME@
+Terminal=false
+Type=Application
+Categories=Graphics;
+Comment=@CPACK_PACKAGE_DESCRIPTION@

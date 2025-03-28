@@ -1,0 +1,8 @@
+build
+*.sh
+.DS_Store
+.trash
+CMakeSettings.json
+.vscode
+.zed
+.cache

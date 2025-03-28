@@ -1,0 +1,33 @@
+[submodule "vendor/imgui"]
+	path = vendor/imgui
+	url = git@github.com:ocornut/imgui.git
+[submodule "vendor/glfw"]
+	path = vendor/glfw
+	url = git@github.com:glfw/glfw.git
+[submodule "vendor/z80"]
+	path = vendor/z80
+	url = git@github.com:kosarev/z80.git
+[submodule "vendor/freetype"]
+	path = vendor/freetype
+	url = git@github.com:freetype/freetype.git
+[submodule "vendor/regex"]
+	path = vendor/regex
+	url = git@github.com:boostorg/regex.git
+[submodule "vendor/sse2neon"]
+	path = vendor/sse2neon
+	url = git@github.com:DLTcollab/sse2neon.git
+[submodule "vendor/IXWebSocket"]
+	path = vendor/IXWebSocket
+	url = git@github.com:machinezone/IXWebSocket.git
+[submodule "vendor/json.cpp"]
+	path = vendor/json.cpp
+	url = git@github.com:jart/json.cpp.git
+[submodule "vendor/xxhash_cpp"]
+	path = vendor/xxhash_cpp
+	url = git@github.com:RedSpah/xxhash_cpp.git
+[submodule "vendor/cxxopts"]
+	path = vendor/cxxopts
+	url = git@github.com:jarro2783/cxxopts.git
+[submodule "vendor/rang"]
+	path = vendor/rang
+	url = git@github.com:agauniyal/rang.git
