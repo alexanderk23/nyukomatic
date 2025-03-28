@@ -205,11 +205,14 @@ void renderFrame() {
             }
 
             ImGui::SameLine();
+            ImGui::BeginDisabled(webSocket.getReadyState() !=
+                                 ix::ReadyState::Closed);
             if (ImGui::Checkbox("sender mode", &isSender)) {
                 LOG_I << "switched to " << (isSender ? "sender" : "grabber")
                       << " mode" << std::endl;
                 updateWindowTitle();
             }
+            ImGui::EndDisabled();
 
             ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
