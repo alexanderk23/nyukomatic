@@ -9,3 +9,6 @@ A ZX Spectrum live-coding tool inspired by [Bazematic](https://github.com/gasman
 and [Bonzomatic](https://github.com/Gargaj/Bonzomatic).
 
 ![GIF](https://github.com/user-attachments/assets/ef0b0261-f07c-46f0-95f7-eb569904a9da)
+
+**[Latest binary builds for Windows / Linux / macOS](https://github.com/alexanderk23/nyukomatic/releases/latest)**
+
