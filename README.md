@@ -14,8 +14,8 @@ and [Bonzomatic](https://github.com/Gargaj/Bonzomatic).
 [Request a new feature](https://github.com/alexanderk23/nyukomatic/issues/new?labels=enhancement&template=feature_request.md)
 
 ## About the project
-
-Like other livecoding tools, **nyukomatic** combines a code editor and a Z80 assembler, allowing you to
+Like other [live-coding](https://livecode.demozoo.org) tools,
+**nyukomatic** combines a code editor and a Z80 assembler, allowing you to
 see the results of code changes in real time. Unlike [Bazematic](https://github.com/gasman/bazematic),
 which runs in a browser and uses [RASM](https://github.com/EdouardBERGE/rasm) as a compiler, it is a
 stand-alone native executable (Win/Linux/macOS) and uses [SJASMPlus](https://github.com/z00m128/sjasmplus)
@@ -23,13 +23,15 @@ which is more familiar to many Z80 coders in terms of syntax.
 
 Continuing the now established tradition of naming live-coding tools, **nyukomatic** is named after
 [Nyuk](https://github.com/akanyuk), the organizer of [Multimatograf](https://multimatograf.ru/)
-demoparty who held the first ZX Spectrum live-coding event in Russia.
+demoparty who held the first ZX Spectrum live-coding [event](https://livecode.demozoo.org/serie/Multimatograf.html#mc)
+in Russia.
 
 ## Key Features
 - Native cross-platform app (with Windows, Linux and macOS builds available)
-- Z80 Assembly syntax highlighting
 - Fast, cycle-accurate Pentagon 128 emulation powered by [z80 library](https://github.com/kosarev/z80)
-- Integrates SJASMPlus
+- Sender/grabber network modes with relaying via [BonzomaticServer](https://github.com/alkama/BonzomaticServer)
+- Z80 Assembly syntax highlighting
+- Integrates [SJASMPlus](https://github.com/z00m128/sjasmplus)
 
 ## Acknowledgements
 ### Original projects
