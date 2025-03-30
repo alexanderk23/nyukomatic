@@ -138,11 +138,9 @@ set(FT_DISABLE_ZLIB ON CACHE BOOL "" FORCE)
 set(FT_DISABLE_BROTLI ON CACHE BOOL "" FORCE)
 set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "" FORCE)
 add_subdirectory(${FREETYPE_DIR} EXCLUDE_FROM_ALL)
-# target_compile_definitions(freetype PUBLIC SKIP_INSTALL_ALL=true)
 if(MSVC)
     target_compile_options(freetype PUBLIC "$<$<CONFIG:Release>:/MT>")
 endif()
-# set(NM_PROJECT_LIBS ${NM_PROJECT_LIBS} freetype)
 
 ##############################################################################
 # IMGUI
@@ -258,14 +256,12 @@ add_library(texteditor STATIC ${TEXT_EDITOR_SRCS})
 target_include_directories(texteditor PUBLIC
     ${IMGUI_DIR}
     ${BOOST_REGEX_DIR}/include
-    # ${CMAKE_SOURCE_DIR}/vendor/libprisma/libprisma
     ${CMAKE_SOURCE_DIR}/vendor/ImGuiColorTextEdit)
 if(MSVC)
     target_compile_options(texteditor PUBLIC "$<$<CONFIG:Release>:/MT>")
 endif()
 # target_compile_definitions(texteditor PUBLIC IMGUI_EDITOR_NO_BOOST)
 target_link_libraries(texteditor boost_regex)
-# set(NM_PROJECT_INCLUDES ${NM_PROJECT_INCLUDES} ${CMAKE_SOURCE_DIR}/vendor/ImGuiColorTextEdit)
 set(NM_PROJECT_LIBS ${NM_PROJECT_LIBS} texteditor)
 
 ##############################################################################
