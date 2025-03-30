@@ -70,6 +70,7 @@ ImVec4 clearColor{0.05f, 0.05f, 0.05f, 0.05f};
 
 jt::Json json;
 ix::WebSocket webSocket;
+std::mutex mtx;
 
 int frame_w = 352, frame_h = 280;
 
@@ -275,13 +276,10 @@ int main(int argc, char **argv) {
 
     webSocket.setOnMessageCallback([](const ix::WebSocketMessagePtr &msg) {
         if (msg->type == ix::WebSocketMessageType::Message) {
-            somethingReceived = false;
-
-            if (isSender)
-                return;
-
+            mtx.lock();
             jt::Json::Status status;
             std::tie(status, json) = jt::Json::parse(msg->str);
+            mtx.unlock();
 
             if (status != jt::Json::success || !json.isObject()) {
                 LOG_W << "ws: invalid json received" << std::endl;
@@ -296,14 +294,15 @@ int main(int argc, char **argv) {
             LOG_E << "ws: connection error: " << msg->errorInfo.reason
                   << std::endl;
         } else if (msg->type == ix::WebSocketMessageType::Close) {
-            LOG_I << "ws: disconnected" << std::endl;
+            LOG_I << "ws: disconnected (" << msg->closeInfo.code << ")"
+                  << std::endl;
         }
     });
 
-    webSocket.setUrl(nm::options::url);
-
-    if (initWindow(frame_w * 3, frame_h * 3, "nyukomatic") != 0)
+    if (initWindow(frame_w * 3, frame_h * 3, "nyukomatic") != 0) {
+        ix::uninitNetSystem();
         return 1;
+    }
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -326,8 +325,8 @@ int main(int argc, char **argv) {
 
     // Load Fonts
     ImFontConfig config;
-    font = io.Fonts->AddFontFromMemoryCompressedTTF( //
-        font_iosevka_compressed_data, font_iosevka_compressed_size, //
+    font = io.Fonts->AddFontFromMemoryCompressedTTF(
+        font_iosevka_compressed_data, font_iosevka_compressed_size,
         22.0f * highDPIscaleFactor, &config);
 
 #if IMGUI_VERSION_NUM > 19180
@@ -337,17 +336,18 @@ int main(int argc, char **argv) {
 #endif
     config.GlyphOffset.y = 2.0f;
     config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_Bold;
-    editorFont = io.Fonts->AddFontFromMemoryCompressedTTF( //
-        font_monaco_compressed_data, font_monaco_compressed_size, //
+    editorFont = io.Fonts->AddFontFromMemoryCompressedTTF(
+        font_monaco_compressed_data, font_monaco_compressed_size,
         20.0f * highDPIscaleFactor, &config);
     editor.SetLineSpacing(1.2f);
 
-    // auto lang = TextEditor::LanguageDefinition::Z80Asm();
     editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Z80Asm());
     editor.SetCompletePairedGlyphs(true);
     editor.SetShowWhitespacesEnabled(false);
     editor.SetTabSize(8);
     editor.SetPalette(textEditorPalette);
+
+    webSocket.setUrl(nm::options::url);
 
     if (isSender) {
         editor.SetText(defaultHeader + defaultText);
@@ -407,26 +407,50 @@ int main(int argc, char **argv) {
             }
         }
 
-        if (!isSender && somethingReceived) {
+        if (somethingReceived && mtx.try_lock()) {
             somethingReceived = false;
 
-            if (json["hideCode"].isBool())
-                editorVisible = !json["hideCode"].getBool();
+            if (!isSender) {
+                if (json["hideCode"].isBool())
+                    editorVisible = !json["hideCode"].getBool();
 
-            if (json["forceUpdate"].isBool())
-                forceUpdate = json["forceUpdate"].getBool();
+                if (json["forceUpdate"].isBool())
+                    forceUpdate = json["forceUpdate"].getBool();
 
-            if (json["source"].isString())
-                editor.SetText(json["source"].getString());
-            else if (json["code"].isString())
-                editor.SetText(json["code"].getString());
+                if (json["source"].isString())
+                    editor.SetText(json["source"].getString());
+                else if (json["code"].isString())
+                    editor.SetText(json["code"].getString());
 
-            if (json["cursor"]["row"].isNumber() &&
-                json["cursor"]["col"].isNumber()) {
-                int row = json["cursor"]["row"].getNumber();
-                int col = json["cursor"]["col"].getNumber();
-                editor.SetCursorPositionAbs(row, col);
+                if (json["cursor"]["row"].isNumber() &&
+                    json["cursor"]["col"].isNumber()) {
+                    int row = json["cursor"]["row"].getNumber();
+                    int col = json["cursor"]["col"].getNumber();
+                    editor.SetCursorPositionAbs(row, col);
+                }
             }
+
+            if (json["ports"].isArray()) {
+                auto &objs = json["ports"].getArray();
+                for (auto &obj : objs) {
+                    if (!obj.isArray() || !obj[0].isNumber())
+                        continue;
+                    fast_u16 port = obj[0].getNumber();
+                    auto &val = obj[1];
+                    if (val.isNumber()) {
+                        e.set_port_value(port, val.getNumber());
+                    } else if (val.isArray()) {
+                        for (auto &item : val.getArray()) {
+                            e.set_port_value(port,
+                                             item.isNumber() ? item.getNumber()
+                                                             : 0x00);
+                            port += 0x100;
+                        }
+                    }
+                }
+            }
+
+            mtx.unlock();
         }
 
         static double lastChangedAt = 0;
@@ -548,6 +572,7 @@ int main(int argc, char **argv) {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     deinitWindow();
+    ix::uninitNetSystem();
 
     return 0;
 }

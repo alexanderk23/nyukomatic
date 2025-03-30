@@ -27,6 +27,7 @@ void main() {
     fragColor = texture(textureSampler, pixel / texSize);
 })##";
 
+// clang-format off
 const float quadVertices[] = {
     // pos         // tex
     -1.0f, -1.0f,  0.0f, 1.0f,
@@ -36,6 +37,7 @@ const float quadVertices[] = {
      1.0f,  1.0f,  1.0f, 0.0f,
      1.0f, -1.0f,  1.0f, 1.0f
 };
+// clang-format on
 
 GLuint shaderProgram = GL_NONE;
 GLuint imageTexture = GL_NONE;

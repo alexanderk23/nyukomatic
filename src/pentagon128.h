@@ -128,6 +128,18 @@ class pentagon128 : public z80::z80_cpu<D> {
         ram_pages[page & 7][addr & 0x3fff] = static_cast<least_u8>(n);
     }
 
+    void write_ram_page(fast_u8 page, least_u16 addr, const least_u8 *data, size_t size) {
+        assert(page < ram_pages_count);
+        assert((addr & 0x3fff) + size <= 0x4000);
+        std::memcpy(&ram_pages[page & 7][addr & 0x3fff], data, size);
+    }
+
+    void write_rom_page(fast_u8 page, least_u16 addr, const least_u8 *data, size_t size) {
+        assert(page < rom_pages_count);
+        assert((addr & 0x3fff) + size <= 0x4000);
+        std::memcpy(&rom_pages[page & 3][addr & 0x3fff], data, size);
+    }
+
     fast_u8 on_read(fast_u16 addr) {
         assert(addr < z80::address_space_size);
         // return self().on_get_memory()[addr];

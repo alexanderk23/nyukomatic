@@ -40,9 +40,13 @@ bool loadConfigFile(const std::string &filename) {
 void parseOptions(int argc, char **argv) {
     cxxopts::Options opts(argv[0], "");
 
-    opts.add_options()("c,config", "Configuration file name", cxxopts::value<std::string>()) //
-        ("s,server", "Server URI", cxxopts::value<std::string>()->default_value(url)) //
-        ("g,grabber", "Run in grabber mode")("h,help", "Print usage");
+    // clang-format off
+    opts.add_options()
+        ("c,config", "Configuration file name", cxxopts::value<std::string>())
+        ("s,server", "Server URI", cxxopts::value<std::string>()->default_value(url))
+        ("g,grabber", "Run in grabber mode")
+        ("h,help", "Print usage");
+    // clang-format on
 
     try {
         args = opts.parse(argc, argv);
