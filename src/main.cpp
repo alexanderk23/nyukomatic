@@ -60,7 +60,6 @@ TextEditor editor;
 bool editorVisible = true;
 bool doCompile = false;
 bool showWhitespaces = false;
-bool somethingReceived = false;
 
 ImFont *font;
 ImFont *editorFont;
@@ -68,9 +67,7 @@ ImFont *editorFont;
 ImVec4 editorBgColor{0.0f, 0.0f, 0.0f, 0.6f};
 ImVec4 clearColor{0.05f, 0.05f, 0.05f, 0.05f};
 
-jt::Json json;
 ix::WebSocket webSocket;
-std::mutex mtx;
 
 int frame_w = 352, frame_h = 280;
 
@@ -262,6 +259,126 @@ void renderFrame() {
     glfwSwapBuffers(window);
 }
 
+struct State {
+    bool forceUpdate = true;
+    bool visible = true;
+    std::string text = "";
+    int cursorRow = 1;
+    int cursorCol = 0;
+};
+
+State state, prevState;
+std::mutex stateMutex;
+std::unordered_map<least_u16, least_u8> ports;
+bool portsChanged = false;
+
+void updateState(jt::Json &json) {
+    const std::lock_guard<std::mutex> lock(stateMutex);
+
+    if (!isSender) {
+        if (json["hideCode"].isBool())
+            state.visible = !json["hideCode"].getBool();
+
+        if (json["forceUpdate"].isBool())
+            state.forceUpdate = json["forceUpdate"].getBool();
+
+        if (json["source"].isString())
+            state.text = json["source"].getString();
+
+        if (json["cursor"]["row"].isNumber())
+            state.cursorRow = json["cursor"]["row"].getNumber();
+
+        if (json["cursor"]["col"].isNumber())
+            state.cursorCol = json["cursor"]["col"].getNumber();
+    }
+
+    if (json["ports"].isArray()) {
+        auto &objs = json["ports"].getArray();
+        for (auto &obj : objs) {
+            if (!obj.isArray() || !obj[0].isNumber())
+                continue;
+            fast_u16 port = 0xFFFF & (fast_u16)obj[0].getNumber();
+            auto &val = obj[1];
+            if (val.isNumber()) {
+                portsChanged = true;
+                ports[port] = 0xFF & (fast_u8)val.getNumber();
+            } else if (val.isArray()) {
+                portsChanged = true;
+                for (auto &item : val.getArray()) {
+                    if (item.isNumber())
+                        ports[port] = 0xFF & (fast_u8)item.getNumber();
+                    port += 0x100;
+                }
+            }
+        }
+    }
+}
+
+void sendState() {
+    if (webSocket.getReadyState() != ix::ReadyState::Open)
+        return;
+
+    editor.GetCursorPosition(state.cursorRow, state.cursorCol);
+    state.text = editor.GetText();
+    state.visible = editorVisible;
+    state.forceUpdate = forceUpdate || forceSend;
+
+    jt::Json json;
+    if (state.forceUpdate) {
+        LOG_I << "force update" << std::endl;
+        prevState = {};
+    }
+
+    if (state.cursorRow != prevState.cursorRow)
+        json["cursor"]["row"] = state.cursorRow;
+    if (state.cursorCol != prevState.cursorCol)
+        json["cursor"]["col"] = state.cursorCol;
+    if (state.text != prevState.text)
+        json["source"] = editor.GetText();
+    if (state.visible != prevState.visible)
+        json["hideCode"] = !state.visible;
+    if (state.forceUpdate)
+        json["forceUpdate"] = true;
+
+    if (json.isObject() && !json.getObject().empty()) {
+        auto res = webSocket.send(json.toString());
+        if (!res.success)
+            return;
+    }
+
+    forceUpdate = false;
+    forceSend = false;
+    prevState = state;
+}
+
+void syncState() {
+    std::unique_lock<std::mutex> lock(stateMutex, std::defer_lock);
+
+    if (!lock.try_lock())
+        return;
+
+    if (!isSender) {
+        forceUpdate = state.forceUpdate;
+        state.forceUpdate = false;
+        if (state.visible != prevState.visible)
+            editorVisible = state.visible;
+        if (state.text != prevState.text)
+            editor.SetText(state.text);
+        if (state.cursorRow != prevState.cursorRow ||
+            state.cursorCol != prevState.cursorCol)
+            editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
+        prevState = state;
+    } else {
+        sendState();
+    }
+
+    if (portsChanged) {
+        portsChanged = false;
+        for (auto port : ports)
+            e.set_port_value(port.first, port.second);
+    }
+}
+
 int main(int argc, char **argv) {
     std::cerr << rang::style::bold << rang::fgB::yellow << logo
               << rang::style::reset << std::endl;
@@ -272,21 +389,18 @@ int main(int argc, char **argv) {
 
     nm::options::parseOptions(argc, argv);
 
-    ix::initNetSystem(); // Required on Windows
+    ix::initNetSystem();
 
     webSocket.setOnMessageCallback([](const ix::WebSocketMessagePtr &msg) {
         if (msg->type == ix::WebSocketMessageType::Message) {
-            mtx.lock();
-            jt::Json::Status status;
-            std::tie(status, json) = jt::Json::parse(msg->str);
-            mtx.unlock();
+            auto[status, json] = jt::Json::parse(msg->str);
 
             if (status != jt::Json::success || !json.isObject()) {
                 LOG_W << "ws: invalid json received" << std::endl;
                 return;
             }
 
-            somethingReceived = true;
+            updateState(json);
         } else if (msg->type == ix::WebSocketMessageType::Open) {
             LOG_I << "ws: connected to " << nm::options::url << std::endl;
             forceSend = true;
@@ -294,7 +408,7 @@ int main(int argc, char **argv) {
             LOG_E << "ws: connection error: " << msg->errorInfo.reason
                   << std::endl;
         } else if (msg->type == ix::WebSocketMessageType::Close) {
-            LOG_I << "ws: disconnected (" << msg->closeInfo.code << ")"
+            LOG_I << "ws: disconnected: " << msg->closeInfo.reason
                   << std::endl;
         }
     });
@@ -354,11 +468,11 @@ int main(int argc, char **argv) {
         doCompile = true;
     } else {
         LOG_I << "running in grabber mode" << std::endl;
-        webSocket.start();
         updateWindowTitle();
         editor.SetText(defaultHeader +
                        std::string("\n; waiting for sender ..."));
         editor.changed = false;
+        webSocket.start();
     }
 
     // Setup Dear ImGui style
@@ -372,6 +486,7 @@ int main(int argc, char **argv) {
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        syncState();
 
         auto forceCompile = isSender && ImGui::IsKeyPressed(ImGuiKey_F5);
         forceSend |= forceCompile;
@@ -379,79 +494,6 @@ int main(int argc, char **argv) {
         forceUpdate = false;
 
         editor.SetReadOnlyEnabled(!isSender);
-        bool doSend = forceSend;
-        static int lastRow = 0;
-        static int lastCol = 0;
-
-        jt::Json outJson;
-        if (isSender) {
-            if (forceSend)
-                outJson["forceUpdate"] = true;
-
-            int row = 0, col = 0;
-
-            editor.GetCursorPosition(row, col);
-
-            if (row != lastRow || col != lastCol || forceSend) {
-                outJson["cursor"]["row"] = row;
-                outJson["cursor"]["col"] = col;
-
-                lastRow = row;
-                lastCol = col;
-                doSend = true;
-            }
-
-            if (editor.changed || forceSend) {
-                outJson["source"] = editor.GetText();
-                doSend = true;
-            }
-        }
-
-        if (somethingReceived && mtx.try_lock()) {
-            somethingReceived = false;
-
-            if (!isSender) {
-                if (json["hideCode"].isBool())
-                    editorVisible = !json["hideCode"].getBool();
-
-                if (json["forceUpdate"].isBool())
-                    forceUpdate = json["forceUpdate"].getBool();
-
-                if (json["source"].isString())
-                    editor.SetText(json["source"].getString());
-                else if (json["code"].isString())
-                    editor.SetText(json["code"].getString());
-
-                if (json["cursor"]["row"].isNumber() &&
-                    json["cursor"]["col"].isNumber()) {
-                    int row = json["cursor"]["row"].getNumber();
-                    int col = json["cursor"]["col"].getNumber();
-                    editor.SetCursorPositionAbs(row, col);
-                }
-            }
-
-            if (json["ports"].isArray()) {
-                auto &objs = json["ports"].getArray();
-                for (auto &obj : objs) {
-                    if (!obj.isArray() || !obj[0].isNumber())
-                        continue;
-                    fast_u16 port = obj[0].getNumber();
-                    auto &val = obj[1];
-                    if (val.isNumber()) {
-                        e.set_port_value(port, val.getNumber());
-                    } else if (val.isArray()) {
-                        for (auto &item : val.getArray()) {
-                            e.set_port_value(port,
-                                             item.isNumber() ? item.getNumber()
-                                                             : 0x00);
-                            port += 0x100;
-                        }
-                    }
-                }
-            }
-
-            mtx.unlock();
-        }
 
         static double lastChangedAt = 0;
         double now = glfwGetTime();
@@ -520,18 +562,14 @@ int main(int argc, char **argv) {
             editor.SetShowWhitespacesEnabled(showWhitespaces);
         }
 
-        if (ImGui::IsKeyPressed(ImGuiKey_F6)) {
+        if (ImGui::IsKeyPressed(ImGuiKey_F6))
             editorVisible ^= true;
-            doSend = true;
-        }
 
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             if (optionsVisible)
                 optionsVisible = false;
-            else {
+            else
                 editorVisible ^= true;
-                doSend = true;
-            }
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_F1)) {
@@ -545,13 +583,6 @@ int main(int argc, char **argv) {
 
         uploadEmulatorImage(e.process_frame(), e.frame_width, e.frame_height);
         renderFrame();
-
-        if (isSender && doSend &&
-            webSocket.getReadyState() == ix::ReadyState::Open) {
-            outJson["hideCode"] = !editorVisible;
-            webSocket.send(outJson.toString());
-            forceSend = false;
-        }
 
         if (fpsLock)
             limitFPS(fps);
@@ -572,6 +603,8 @@ int main(int argc, char **argv) {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     deinitWindow();
+
+    webSocket.stop();
     ix::uninitNetSystem();
 
     return 0;
