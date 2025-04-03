@@ -1,6 +1,6 @@
 build
 *.sh
-.DS_Store
+**/.DS_Store
 .trash
 CMakeSettings.json
 .vscode

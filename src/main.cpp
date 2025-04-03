@@ -58,13 +58,15 @@ bool optionsVisible = false;
 
 TextEditor editor;
 bool editorVisible = true;
-bool doCompile = false;
+bool doCompile = true;
 bool showWhitespaces = false;
+bool doReset = false;
 
 ImFont *font;
 ImFont *editorFont;
 
 ImVec4 editorBgColor{0.0f, 0.0f, 0.0f, 0.6f};
+float editorFgOpacity = 1.0f;
 ImVec4 clearColor{0.05f, 0.05f, 0.05f, 0.05f};
 
 ix::WebSocket webSocket;
@@ -142,6 +144,7 @@ void renderFrame() {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, editorBgColor);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, editorFgOpacity));
         ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0, 0, 0, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab,
                               ImVec4(0.5f, 0.5f, 0.5f, 0.3f));
@@ -164,7 +167,7 @@ void renderFrame() {
         }
 
         ImGui::End();
-        ImGui::PopStyleColor(5);
+        ImGui::PopStyleColor(6);
         ImGui::PopStyleVar(4);
     }
 
@@ -209,6 +212,7 @@ void renderFrame() {
                 LOG_I << "switched to " << (isSender ? "sender" : "grabber")
                       << " mode" << std::endl;
                 updateWindowTitle();
+                forceSend = true;
             }
             ImGui::EndDisabled();
 
@@ -229,7 +233,8 @@ void renderFrame() {
             ImGui::ColorEdit3("editor bg color", (float *)&editorBgColor);
             ImGui::SliderFloat("editor bg opacity", (float *)&editorBgColor + 3,
                                0.0f, 1.0f);
-
+            ImGui::SliderFloat("editor text opacity", (float *)&editorFgOpacity,
+                               0.0f, 1.0f);
             ImGui::ColorEdit3("bg color", (float *)&bgColor);
 
 #ifndef NDEBUG
@@ -260,36 +265,57 @@ void renderFrame() {
 }
 
 struct State {
-    bool forceUpdate = true;
+    bool forceUpdate = false;
     bool visible = true;
+    bool reset = false;
     std::string text = "";
-    int cursorRow = 1;
+    int cursorRow = 0;
     int cursorCol = 0;
+    std::array<int, 4> selection;
 };
 
 State state, prevState;
 std::mutex stateMutex;
 std::unordered_map<least_u16, least_u8> ports;
 bool portsChanged = false;
+const std::array<int, 4> emptySelection{0, 0, 0, 0};
 
 void updateState(jt::Json &json) {
     const std::lock_guard<std::mutex> lock(stateMutex);
 
     if (!isSender) {
+        if (json["cursor"]["row"].isNumber())
+            state.cursorRow = json["cursor"]["row"].getNumber();
+
+        if (json["cursor"]["col"].isNumber())
+            state.cursorCol = json["cursor"]["col"].getNumber();
+
+        if (json["selection"].isArray()) {
+            int i = 0;
+            for (auto &x : json["selection"].getArray()) {
+                if (x.isNumber()) {
+                    state.selection[i++] = x.getNumber();
+                    if (i == 4)
+                        break;
+                }
+            }
+            if(i != 4) state.selection = emptySelection;
+        }
+
+        if (json["cursor"]["col"].isNumber())
+            state.cursorCol = json["cursor"]["col"].getNumber();
+
+        if (json["source"].isString())
+            state.text = json["source"].getString();
+
         if (json["hideCode"].isBool())
             state.visible = !json["hideCode"].getBool();
 
         if (json["forceUpdate"].isBool())
             state.forceUpdate = json["forceUpdate"].getBool();
 
-        if (json["source"].isString())
-            state.text = json["source"].getString();
-
-        if (json["cursor"]["row"].isNumber())
-            state.cursorRow = json["cursor"]["row"].getNumber();
-
-        if (json["cursor"]["col"].isNumber())
-            state.cursorCol = json["cursor"]["col"].getNumber();
+        if (json["reset"].isBool())
+            state.reset = json["reset"].getBool();
     }
 
     if (json["ports"].isArray()) {
@@ -318,37 +344,38 @@ void sendState() {
     if (webSocket.getReadyState() != ix::ReadyState::Open)
         return;
 
-    editor.GetCursorPosition(state.cursorRow, state.cursorCol);
-    state.text = editor.GetText();
-    state.visible = editorVisible;
-    state.forceUpdate = forceUpdate || forceSend;
+    double now = glfwGetTime();
+    static double lastSentAt = 0;
+    forceSend |= forceUpdate || (now > lastSentAt + 5);
 
     jt::Json json;
-    if (state.forceUpdate) {
-        LOG_I << "force update" << std::endl;
-        prevState = {};
-    }
 
-    if (state.cursorRow != prevState.cursorRow)
+    if (forceSend || state.cursorRow != prevState.cursorRow)
         json["cursor"]["row"] = state.cursorRow;
-    if (state.cursorCol != prevState.cursorCol)
+    if (forceSend || state.cursorCol != prevState.cursorCol)
         json["cursor"]["col"] = state.cursorCol;
-    if (state.text != prevState.text)
-        json["source"] = editor.GetText();
-    if (state.visible != prevState.visible)
+    if (forceSend || state.text != prevState.text)
+        json["source"] = state.text;
+    if (forceSend || state.visible != prevState.visible)
         json["hideCode"] = !state.visible;
     if (state.forceUpdate)
         json["forceUpdate"] = true;
+    if (state.reset)
+        json["reset"] = true;
+    if (forceSend || state.selection != prevState.selection) {
+        for (int i = 0; i < 4; i++)
+            json["selection"][i] = state.selection[i];
+    }
 
     if (json.isObject() && !json.getObject().empty()) {
         auto res = webSocket.send(json.toString());
         if (!res.success)
             return;
+        lastSentAt = now;
     }
 
     forceUpdate = false;
     forceSend = false;
-    prevState = state;
 }
 
 void syncState() {
@@ -357,20 +384,43 @@ void syncState() {
     if (!lock.try_lock())
         return;
 
-    if (!isSender) {
+    if (isSender) {
+        state.text = editor.GetText();
+        state.visible = editorVisible;
+        state.forceUpdate = forceUpdate;
+        state.reset = doReset;
+        editor.GetCursorPosition(state.cursorRow, state.cursorCol);
+        editor.GetSelectionAbs(state.selection[0], state.selection[1],
+                               state.selection[2], state.selection[3]);
+        sendState();
+    } else {
         forceUpdate = state.forceUpdate;
         state.forceUpdate = false;
+        doReset = state.reset;
+        state.reset = false;
         if (state.visible != prevState.visible)
             editorVisible = state.visible;
+
         if (state.text != prevState.text)
             editor.SetText(state.text);
+
         if (state.cursorRow != prevState.cursorRow ||
             state.cursorCol != prevState.cursorCol)
             editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
-        prevState = state;
-    } else {
-        sendState();
+
+        if (state.selection != prevState.selection) {
+            if (state.selection == emptySelection) {
+                editor.ClearSelections();
+                editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
+            } else {
+                editor.SetSelectionAbs(state.selection[0], state.selection[1],
+                                       state.selection[2], state.selection[3]);
+                editor.GetCursorPosition(state.cursorRow, state.cursorCol);
+            }
+        }
     }
+
+    prevState = state;
 
     if (portsChanged) {
         portsChanged = false;
@@ -394,12 +444,10 @@ int main(int argc, char **argv) {
     webSocket.setOnMessageCallback([](const ix::WebSocketMessagePtr &msg) {
         if (msg->type == ix::WebSocketMessageType::Message) {
             auto[status, json] = jt::Json::parse(msg->str);
-
             if (status != jt::Json::success || !json.isObject()) {
                 LOG_W << "ws: invalid json received" << std::endl;
                 return;
             }
-
             updateState(json);
         } else if (msg->type == ix::WebSocketMessageType::Open) {
             LOG_I << "ws: connected to " << nm::options::url << std::endl;
@@ -430,8 +478,8 @@ int main(int argc, char **argv) {
     // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
     // io.ConfigInputTrickleEventQueue = false;
-    io.KeyRepeatDelay = 0.25f;
-    io.KeyRepeatRate = 0.035f;
+    io.KeyRepeatDelay = 0.225f; // 0.25f;
+    io.KeyRepeatRate = 0.03f; // 0.035f;
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -465,13 +513,11 @@ int main(int argc, char **argv) {
 
     if (isSender) {
         editor.SetText(defaultHeader + defaultText);
-        doCompile = true;
     } else {
         LOG_I << "running in grabber mode" << std::endl;
         updateWindowTitle();
         editor.SetText(defaultHeader +
                        std::string("\n; waiting for sender ..."));
-        editor.changed = false;
         webSocket.start();
     }
 
@@ -486,13 +532,18 @@ int main(int argc, char **argv) {
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        auto forceCompile = false;
+
+        if (isSender) {
+            doReset = ImGui::IsKeyPressed(ImGuiKey_F12);
+            forceCompile = ImGui::IsKeyPressed(ImGuiKey_F5);
+            forceUpdate |= forceCompile;
+        }
+
         syncState();
 
-        auto forceCompile = isSender && ImGui::IsKeyPressed(ImGuiKey_F5);
-        forceSend |= forceCompile;
         forceCompile |= forceUpdate && !isSender;
-        forceUpdate = false;
-
         editor.SetReadOnlyEnabled(!isSender);
 
         static double lastChangedAt = 0;
@@ -502,23 +553,25 @@ int main(int argc, char **argv) {
             lastChangedAt = now;
         }
 
-        if ((lastChangedAt != 0) && (now > lastChangedAt + 0.02)) { // 0.08
+        if ((lastChangedAt != 0) && (now > lastChangedAt + 0.02)) {
             doCompile = true;
             lastChangedAt = 0;
         }
 
-        if (isSender && ImGui::IsKeyPressed(ImGuiKey_F12)) {
+        if (doReset) {
             e.on_reset(false);
-            doCompile = false;
             lastChangedAt = 0;
             editor.changed = false;
+            doCompile = false;
+            forceCompile = false;
+            doReset = false;
         }
 
         if (doCompile || forceCompile) {
             doCompile = false;
             lastChangedAt = 0;
 
-            static xxh::hash32_t prev_hash = 0;
+            static xxh::hash32_t prevHash = 0;
             nm::compiler::input_t source = editor.GetText();
             nm::compiler::output_t output;
             nm::compiler::errors_t errors;
@@ -526,8 +579,8 @@ int main(int argc, char **argv) {
             if (nm::compiler::compile(source, output, errors)) {
                 if (!forceCompile) {
                     auto hash = xxh::xxhash<32>(output);
-                    if (hash != prev_hash) {
-                        prev_hash = hash;
+                    if (hash != prevHash) {
+                        prevHash = hash;
                         forceCompile = true;
                     }
                 }
@@ -537,10 +590,10 @@ int main(int argc, char **argv) {
                     auto data = output.data();
                     auto len = output.length();
                     e.write_ram(0x4000, data, len);
-                    unsigned int start_addr = 0x6000;
-                    while (!data[start_addr - 0x4000] && start_addr <= 0xffff)
-                        start_addr++;
-                    e.set_pc(start_addr);
+                    unsigned int startAddr = 0x6000;
+                    while (!data[startAddr - 0x4000] && startAddr <= 0xffff)
+                        startAddr++;
+                    e.set_pc(startAddr);
                 }
             }
 
