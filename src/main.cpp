@@ -404,19 +404,16 @@ void syncState() {
         if (state.text != prevState.text)
             editor.SetText(state.text);
 
-        if (state.cursorRow != prevState.cursorRow ||
-            state.cursorCol != prevState.cursorCol)
-            editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
+        if (state.selection == emptySelection) {
+            if (state.cursorRow != prevState.cursorRow ||
+                state.cursorCol != prevState.cursorCol)
+                editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
+        }
 
         if (state.selection != prevState.selection) {
-            if (state.selection == emptySelection) {
-                editor.ClearSelections();
-                editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
-            } else {
-                editor.SetSelectionAbs(state.selection[0], state.selection[1],
-                                       state.selection[2], state.selection[3]);
-                editor.GetCursorPosition(state.cursorRow, state.cursorCol);
-            }
+            editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
+            editor.SetSelectionAbs(state.selection[0], state.selection[1],
+                                    state.selection[2], state.selection[3]);
         }
     }
 
