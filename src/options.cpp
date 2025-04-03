@@ -14,7 +14,7 @@ namespace nm::options {
 cxxopts::ParseResult args;
 jt::Json json;
 
-std::string url{"ws://drone.alkama.com:9000/nyukomatic/test"};
+std::string url{"wss://nm.alexanderk.ru/nyukomatic/test"};
 std::string configFileName{""};
 bool isSender = true;
 int fps = 50;

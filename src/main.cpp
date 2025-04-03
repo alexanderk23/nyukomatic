@@ -287,8 +287,8 @@ void updateState(jt::Json &json) {
         if (json["cursor"]["row"].isNumber())
             state.cursorRow = json["cursor"]["row"].getNumber();
 
-        if (json["cursor"]["col"].isNumber())
-            state.cursorCol = json["cursor"]["col"].getNumber();
+        if (json["cursor"]["column"].isNumber())
+            state.cursorCol = json["cursor"]["column"].getNumber();
 
         if (json["selection"].isArray()) {
             int i = 0;
@@ -309,8 +309,8 @@ void updateState(jt::Json &json) {
         if (json["hideCode"].isBool())
             state.visible = !json["hideCode"].getBool();
 
-        if (json["forceUpdate"].isBool())
-            state.forceUpdate = json["forceUpdate"].getBool();
+        if (json["compile"].isBool())
+            state.forceUpdate = json["compile"].getBool();
 
         if (json["reset"].isBool())
             state.reset = json["reset"].getBool();
@@ -351,13 +351,13 @@ void sendState() {
     if (forceSend || state.cursorRow != prevState.cursorRow)
         json["cursor"]["row"] = state.cursorRow;
     if (forceSend || state.cursorCol != prevState.cursorCol)
-        json["cursor"]["col"] = state.cursorCol;
+        json["cursor"]["column"] = state.cursorCol;
     if (forceSend || state.text != prevState.text)
         json["source"] = state.text;
     if (forceSend || state.visible != prevState.visible)
         json["hideCode"] = !state.visible;
     if (state.forceUpdate)
-        json["forceUpdate"] = true;
+        json["compile"] = true;
     if (state.reset)
         json["reset"] = true;
     if (forceSend || state.selection != prevState.selection) {
