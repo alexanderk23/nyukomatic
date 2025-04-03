@@ -782,10 +782,14 @@ void TextEditor::MoveCoords(Coordinates &aCoords, MoveDirection aDirection,
         break;
     case MoveDirection::Up:
         aCoords.mLine = std::max(0, lineIndex - aLineCount);
+        charIndex = GetCharacterIndexR(aCoords);
+        aCoords.mColumn = GetCharacterColumn(aCoords.mLine, charIndex);
         break;
     case MoveDirection::Down:
         aCoords.mLine = std::max(
             0, std::min((int)mLines.size() - 1, lineIndex + aLineCount));
+        charIndex = GetCharacterIndexR(aCoords);
+        aCoords.mColumn = GetCharacterColumn(aCoords.mLine, charIndex);
         break;
     }
 }
