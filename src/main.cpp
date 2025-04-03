@@ -299,11 +299,9 @@ void updateState(jt::Json &json) {
                         break;
                 }
             }
-            if(i != 4) state.selection = emptySelection;
+            if (i != 4)
+                state.selection = emptySelection;
         }
-
-        if (json["cursor"]["col"].isNumber())
-            state.cursorCol = json["cursor"]["col"].getNumber();
 
         if (json["source"].isString())
             state.text = json["source"].getString();
@@ -412,8 +410,10 @@ void syncState() {
 
         if (state.selection != prevState.selection) {
             editor.SetCursorPositionAbs(state.cursorRow, state.cursorCol);
-            editor.SetSelectionAbs(state.selection[0], state.selection[1],
-                                    state.selection[2], state.selection[3]);
+            if (state.selection != emptySelection) {
+                editor.SetSelectionAbs(state.selection[0], state.selection[1],
+                                       state.selection[2], state.selection[3]);
+            }
         }
     }
 
