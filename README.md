@@ -105,7 +105,7 @@ For this JSON input:
     ]
 }
 ```
-**Resulting port values** (4783 = 0x12AF, 1019 = 0x03FB):
+**Resulting port values** (`4783` = `0x12AF`, `1019` = `0x03FB`):
 - `0x12AF` → `42`  
 - `0x03FB` → `1`, `0x02FB` → `2`, `0x01FB` → `3`  
 
