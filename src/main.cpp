@@ -331,7 +331,7 @@ void updateState(jt::Json &json) {
                 for (auto &item : val.getArray()) {
                     if (item.isNumber())
                         ports[port] = 0xFF & (fast_u8)item.getNumber();
-                    port += 0x100;
+                    port = (port - 0x100) & 0xFFFF;
                 }
             }
         }
