@@ -69,14 +69,14 @@ analyzer data from a microphone input and modifying effect parameters in real-ti
      - Single port: `[port_number, value]`  
      - Value array: `[base_port_number, [value_1, value_2, ...]]`  
 
-```jsonc
-{
-    "ports": [
-        [ 4783, 42 ], // Single port value
-        [ 1019, [1, 2, 3] ] // Array of values (mapped to ports)
-    ]
-}
-```
+    ```jsonc
+    {
+        "ports": [
+            [ 4783, 42 ], // Single port value
+            [ 1019, [1, 2, 3] ] // Array of values (mapped to ports)
+        ]
+    }
+    ```
 
 2. **Z80 Code Reading**:  
    - **Single port**:  
