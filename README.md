@@ -28,8 +28,98 @@ in Russia.
 - Native cross-platform app (with Windows, Linux and macOS builds available)
 - Fast, cycle-accurate Pentagon 128 emulation powered by [z80 library](https://github.com/kosarev/z80)
 - Sender/grabber network modes with relaying via [BonzomaticServer](https://github.com/alkama/BonzomaticServer)
+- Can receive network broadcast data available from Z80 code by reading ports
+  (requires [patched Bonzomatic server](https://github.com/alexanderk23/BonzomaticServer))
+- Integrates [SJASMPlus](https://github.com/z00m128/sjasmplus): code is compiled and executed in real time as you type
 - Z80 Assembly syntax highlighting
-- Integrates [SJASMPlus](https://github.com/z00m128/sjasmplus)
+
+## Usage
+
+**nyukomatic** can operate in either **sender** or **grabber** mode.
+
+- In **sender mode**, nyukomatic transmits the user's actions (code changes, cursor movements, etc.)
+to the Bonzomatic server, which then relays them to all grabbers that have the same **room** and
+**nickname** specified in their server URL.
+
+- In **grabber mode**, input is disabled, and **nyukomatic** displays the actions of a sender with
+a matching **room** and **nickname**.
+
+By default, the program launches in **sender mode without a server connection**.
+You can experiment with the code, but it won’t be transmitted anywhere.
+
+To connect, open the settings window, specify the Bonzomatic server URL in the format:
+```
+ws://bonzomatic.example.com/room/nickname/
+```
+and click the "connect" button.
+
+## Broadcasting port values
+
+**nyukomatic** supports receiving arbitrary port values over the network from external utilities.
+These network-transmitted port values can be read in Z80 assembly code using standard instructions.
+
+This enables dynamic code behavior based on external conditions. For example, sending FFT spectrum
+analyzer data from a microphone input and modifying effect parameters in real-time based on music
+(similar to shader showdown competitions).
+
+### Implementation  
+1. **External Utility Setup**:  
+   - Connect to a Bonzomatic server room using an **empty nickname**.  
+   - Send a JSON message containing an array of port-value pairs:  
+     - Single port: `[port_number, value]`  
+     - Value array: `[base_port_number, [value_1, value_2, ...]]`  
+
+```jsonc
+{
+    "ports": [
+        [ 4783, 42 ], // Single port value
+        [ 1019, [1, 2, 3] ] // Array of values (mapped to ports)
+    ]
+}
+```
+
+2. **Z80 Code Reading**:  
+   - **Single port**:  
+
+     ```asm
+     ld bc, port_number
+     in a, (c)     ; Value stored in register A
+     ```
+   - **Array of ports**:  
+     Each array element maps to `base_port_number - (index * 256)`.  
+     Use [`inir`](https://www.jnz.dk/z80/inir.html) for efficient bulk reading:  
+
+     ```asm
+     ld bc, base_port_number
+     ld hl, dest_addr
+     inir          ; Reads values sequentially to memory at HL
+     ```
+
+### Example  
+For this JSON input:  
+```jsonc
+{
+    "ports": [
+        [ 4783, 42 ],
+        [ 1019, [1, 2, 3] ]
+    ]
+}
+```
+**Resulting port values** (4783 = 0x12AF, 1019 = 0x03FB):
+- `0x12AF` → `42`  
+- `0x03FB` → `1`, `0x02FB` → `2`, `0x01FB` → `3`  
+
+**Assembly demonstration**:  
+```asm
+; Read single value
+ld bc, 0x12AF
+in a, (c)       ; A = 0x55
+
+; Read value array
+ld bc, 0x03FB
+ld hl, 0x4000
+inir            ; Writes 0x01, 0x02, 0x03 to addresses 0x4000-0x4002
+```
 
 ## Acknowledgements
 ### Original projects
