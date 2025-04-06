@@ -113,7 +113,7 @@ For this JSON input:
 ```asm
 ; Read single value
 ld bc, 0x12AF
-in a, (c)       ; A = 0x55
+in a, (c)       ; A = 42
 
 ; Read value array
 ld bc, 0x03FB
