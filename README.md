@@ -58,9 +58,9 @@ and click the "connect" button.
 **nyukomatic** supports receiving arbitrary port values over the network from external utilities.
 These network-transmitted port values can be read in Z80 assembly code using standard instructions.
 
-This enables dynamic code behavior based on external conditions. For example, sending FFT spectrum
-analyzer data from a microphone input and modifying effect parameters in real-time based on music
-(similar to shader showdown competitions).
+This enables dynamic code behavior based on external conditions. For example, [sending FFT spectrum
+analyzer data](https://github.com/alexanderk23/nm-fft-example) from a microphone input and modifying
+effect parameters in real-time based on music (similar to shader showdown competitions).
 
 ### Implementation  
 1. **External Utility Setup**:  
