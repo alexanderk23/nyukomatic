@@ -1,3 +1,5 @@
+#include <thread>
+
 #include "window.h"
 #include "logger.h"
 
@@ -100,23 +102,6 @@ void deinitWindow() {
     glfwTerminate();
 }
 
-/**
- * Cross-platform sleep function for C
- * @param int milliseconds
- */
-void sleep_ms(int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#elif _POSIX_C_SOURCE >= 199309L
-    struct timespec ts;
-    ts.tv_sec = ms / 1000;
-    ts.tv_nsec = (ms % 1000) * 1000000;
-    nanosleep(&ts, NULL);
-#else
-    usleep(ms * 1000);
-#endif
-}
-
 void limitFPS(double fps) {
     static double last_time = glfwGetTime();
     static double accumulator = 0;
@@ -148,7 +133,7 @@ void limitFPS(double fps) {
         if (done)
             break;
 
-        sleep_ms(1);
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
 }
 
