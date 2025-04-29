@@ -33,8 +33,19 @@ in Russia.
 - Integrates [SJASMPlus](https://github.com/z00m128/sjasmplus): code is compiled and executed in real time as you type
 - Z80 Assembly syntax highlighting
 
-## Usage
+## Building nyukomatic on Linux (Debian)
 
+```bash 
+sudo apt install -y libgl1-mesa-dev libfontconfig-dev libxmu-dev libxi-dev libgl-dev libxrandr-dev libxinerama-dev xorg-dev libglu1-mesa-dev libssl-dev
+git clone https://github.com/alexanderk23/nyukomatic
+cd nyukomatic
+git submodule update --init --recursive
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build .
+```
+
+## Usage
 **nyukomatic** can operate in either **sender** or **grabber** mode.
 
 - In **sender mode**, nyukomatic transmits the user's actions (code changes, cursor movements, etc.)
@@ -54,7 +65,6 @@ ws://bonzomatic.example.com/room/nickname/
 and click the "connect" button.
 
 ## Broadcasting port values
-
 **nyukomatic** supports receiving arbitrary port values over the network from external utilities.
 These network-transmitted port values can be read in Z80 assembly code using standard instructions.
 
