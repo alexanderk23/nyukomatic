@@ -44,7 +44,6 @@ using namespace nm::render;
 using namespace nm::window;
 
 emulator e;
-bool showDemoWindow = false;
 
 using nm::options::fps;
 using nm::options::fpsLock;
@@ -172,11 +171,6 @@ void renderFrame() {
     }
 
     if (optionsVisible) {
-#ifndef NDEBUG
-        // editor.ImGuiDebugPanel("EditorDebug");
-        if (showDemoWindow)
-            ImGui::ShowDemoWindow(&showDemoWindow);
-#endif
         ImGuiIO &io = ImGui::GetIO();
 
         static bool initialPosSet = false;
@@ -237,9 +231,6 @@ void renderFrame() {
                                0.0f, 1.0f);
             ImGui::ColorEdit3("bg color", (float *)&bgColor);
 
-#ifndef NDEBUG
-            ImGui::Checkbox("imgui tools", &showDemoWindow);
-#endif
             ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
             ImGui::Text("%s %s", glGetString(GL_RENDERER),

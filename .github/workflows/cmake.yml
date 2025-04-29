@@ -43,7 +43,7 @@ jobs:
       run: |
         sudo apt-get install -y gcc-10 g++-10 clang tcc libgl1-mesa-dev \
         libasound2-dev libfontconfig1-dev libxmu-dev libxi-dev libgl-dev \
-        libxrandr-dev libxinerama-dev xorg-dev xorg-dev libglu1-mesa-dev \
+        libxrandr-dev libxinerama-dev xorg-dev libglu1-mesa-dev \
         libssl-dev
 
     - name: Configure CMake with default compiler

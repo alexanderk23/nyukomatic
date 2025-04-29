@@ -154,9 +154,6 @@ set(IMGUI_SRCS
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp)
-if(DEBUG)
-    set(IMGUI_SRCS ${IMGUI_SRCS} ${IMGUI_DIR}/imgui_demo.cpp)
-endif()
 add_library(imgui STATIC ${IMGUI_SRCS})
 target_include_directories(imgui PUBLIC
     ${GLFW_DIR}/include
