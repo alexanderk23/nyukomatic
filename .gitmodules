@@ -3,7 +3,7 @@
 	url = https://github.com/ocornut/imgui
 [submodule "vendor/glfw"]
 	path = vendor/glfw
-	url = https://github.com/glfw/glfw
+	url = https://github.com/alexanderk23/glfw
 [submodule "vendor/z80"]
 	path = vendor/z80
 	url = https://github.com/kosarev/z80
