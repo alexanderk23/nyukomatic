@@ -41,7 +41,7 @@ jobs:
     - name: Setup dependencies (Ubuntu)
       if: startsWith(matrix.os, 'ubuntu')
       run: |
-        sudo apt-get install -y gcc-10 g++-10 clang tcc libgl1-mesa-dev \
+        sudo apt update && sudo apt install -y gcc-10 g++-10 clang tcc libgl1-mesa-dev \
         libasound2-dev libfontconfig1-dev libxmu-dev libxi-dev libgl-dev \
         libxrandr-dev libxinerama-dev xorg-dev libglu1-mesa-dev \
         libssl-dev
