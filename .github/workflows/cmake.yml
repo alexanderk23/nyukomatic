@@ -81,7 +81,7 @@ jobs:
       run: cpack
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: github.event_name == 'workflow_dispatch'
       with:
         compression-level: 0
