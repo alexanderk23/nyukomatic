@@ -92,7 +92,7 @@ jobs:
           ${{ github.workspace }}/build/*.dmg
 
     - name: Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       if: startsWith(github.ref, 'refs/tags/')
       with:
         draft: true
